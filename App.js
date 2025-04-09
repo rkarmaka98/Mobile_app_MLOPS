@@ -1,29 +1,40 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { Camera } from 'expo-camera';
+import React, { useRef, useState } from 'react';
+import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import axios from 'axios';
 import { StatusBar } from 'expo-status-bar';
 
 export default function App() {
-  const [hasPermission, setHasPermission] = useState(null);
-  const [camera, setCamera] = useState(null);
+  const [permission, requestPermission] = useCameraPermissions();
+  const cameraRef = useRef(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [objectDescription, setObjectDescription] = useState('');
-  const cameraRef = useRef(null);
+  const [facing, setFacing] = useState('back');
 
-  useEffect(() => {
-    (async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      setHasPermission(status === 'granted');
-    })();
-  }, []);
+  if (!permission) {
+    return null;
+  }
+
+  if (!permission.granted) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.text}>We need your permission to use the camera</Text>
+        <TouchableOpacity 
+          style={styles.button} 
+          onPress={requestPermission}
+        >
+          <Text style={styles.buttonText}>Grant Permission</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   const analyzeImage = async () => {
-    if (!camera) return;
+    if (!cameraRef.current) return;
     
     setIsAnalyzing(true);
     try {
-      const photo = await camera.takePictureAsync({
+      const photo = await cameraRef.current.takePictureAsync({
         quality: 0.5,
         base64: true,
       });
@@ -42,41 +53,25 @@ export default function App() {
     }
   };
 
-  if (hasPermission === null) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.text}>Requesting camera permission...</Text>
-        <ActivityIndicator size="large" color="#0000ff" />
-      </View>
-    );
-  }
-
-  if (hasPermission === false) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.text}>No access to camera</Text>
-        <TouchableOpacity 
-          style={styles.button} 
-          onPress={async () => {
-            const { status } = await Camera.requestCameraPermissionsAsync();
-            setHasPermission(status === 'granted');
-          }}
-        >
-          <Text style={styles.buttonText}>Grant Permission</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+  const toggleFacing = () => {
+    setFacing(current => (current === 'back' ? 'front' : 'back'));
+  };
 
   return (
     <View style={styles.container}>
       <StatusBar style="auto" />
-      <Camera 
+      <CameraView 
         style={styles.camera} 
-        ref={ref => setCamera(ref)}
-        type={Camera.Constants.Type.back}
+        ref={cameraRef}
+        facing={facing}
       >
         <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={toggleFacing}
+          >
+            <Text style={styles.buttonText}>Flip</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             style={styles.button}
             onPress={analyzeImage}
@@ -89,7 +84,7 @@ export default function App() {
             )}
           </TouchableOpacity>
         </View>
-      </Camera>
+      </CameraView>
       {objectDescription ? (
         <View style={styles.descriptionContainer}>
           <Text style={styles.descriptionText}>{objectDescription}</Text>
@@ -115,18 +110,18 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   buttonContainer: {
-    flex: 1,
-    backgroundColor: 'transparent',
+    position: 'absolute',
+    bottom: 44,
+    left: 0,
+    width: '100%',
     flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-    marginBottom: 20,
+    justifyContent: 'space-around',
+    paddingHorizontal: 30,
   },
   button: {
     backgroundColor: 'rgba(0,0,0,0.5)',
     padding: 15,
     borderRadius: 10,
-    marginHorizontal: 20,
   },
   buttonText: {
     color: 'white',
