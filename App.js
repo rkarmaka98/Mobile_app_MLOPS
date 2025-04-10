@@ -102,8 +102,11 @@ export default function App() {
                     onPress={() => handleSearch(detection.search_url)}
                   >
                     <Text style={styles.detectionText}>
-                      {detection.class} ({detection.confidence.toFixed(2)})
-                      {detection.text ? ` - ${detection.text}` : ''}
+                      <Text style={styles.objectClass}>{detection.class}</Text>
+                      <Text style={styles.confidence}> ({detection.confidence.toFixed(2)})</Text>
+                      {detection.text ? (
+                        <Text style={styles.detectedText}>{'\n'}{detection.text}</Text>
+                      ) : null}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -188,17 +191,33 @@ const styles = StyleSheet.create({
     marginTop: 40,
     marginHorizontal: 20,
     borderRadius: 10,
+    maxHeight: '60%',
   },
   detectionButton: {
-    padding: 10,
-    marginVertical: 5,
-    borderRadius: 5,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    padding: 12,
+    marginVertical: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   detectionText: {
     color: 'white',
-    fontSize: 14,
+    fontSize: 16,
     textAlign: 'center',
+    lineHeight: 24,
+  },
+  objectClass: {
+    fontWeight: 'bold',
+    fontSize: 18,
+  },
+  confidence: {
+    color: '#4CAF50',
+    fontWeight: '600',
+  },
+  detectedText: {
+    color: '#FFD700',
+    fontStyle: 'italic',
   },
   bottomOverlay: {
     backgroundColor: 'rgba(0,0,0,0.7)',
