@@ -1,14 +1,18 @@
 import React, { useRef, useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator, Image, Alert } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import axios from 'axios';
 import { StatusBar } from 'expo-status-bar';
+
+// Update this to your computer's IP address
+const SERVER_URL = 'http://10.65.243.154:5000'; // Replace with your actual IP address
 
 export default function App() {
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [objectDescription, setObjectDescription] = useState('');
+  const [annotatedImage, setAnnotatedImage] = useState(null);
   const [facing, setFacing] = useState('back');
 
   if (!permission) {
@@ -39,14 +43,27 @@ export default function App() {
         base64: true,
       });
 
+      console.log('Sending image to server...');
       // Send the image to your server
-      const response = await axios.post('YOUR_SERVER_ENDPOINT', {
+      const response = await axios.post(`${SERVER_URL}/analyze`, {
         image: photo.base64,
       });
 
+      console.log('Received response:', response.data);
       setObjectDescription(response.data.description);
+      setAnnotatedImage(`data:image/jpeg;base64,${response.data.annotated_image}`);
     } catch (error) {
       console.error('Error analyzing image:', error);
+      Alert.alert(
+        'Error',
+        'Failed to analyze image. Please check your connection to the server.',
+        [
+          {
+            text: 'OK',
+            onPress: () => console.log('OK Pressed'),
+          },
+        ]
+      );
       setObjectDescription('Error analyzing image. Please try again.');
     } finally {
       setIsAnalyzing(false);
@@ -60,36 +77,52 @@ export default function App() {
   return (
     <View style={styles.container}>
       <StatusBar style="auto" />
-      <CameraView 
-        style={styles.camera} 
-        ref={cameraRef}
-        facing={facing}
-      >
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={styles.button}
-            onPress={toggleFacing}
-          >
-            <Text style={styles.buttonText}>Flip</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.button}
-            onPress={analyzeImage}
-            disabled={isAnalyzing}
-          >
-            {isAnalyzing ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <Text style={styles.buttonText}>Analyze</Text>
-            )}
-          </TouchableOpacity>
+      {annotatedImage ? (
+        <View style={styles.container}>
+          <Image 
+            source={{ uri: annotatedImage }} 
+            style={styles.annotatedImage}
+            resizeMode="contain"
+          />
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => setAnnotatedImage(null)}
+            >
+              <Text style={styles.buttonText}>Back to Camera</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.descriptionContainer}>
+            <Text style={styles.descriptionText}>{objectDescription}</Text>
+          </View>
         </View>
-      </CameraView>
-      {objectDescription ? (
-        <View style={styles.descriptionContainer}>
-          <Text style={styles.descriptionText}>{objectDescription}</Text>
-        </View>
-      ) : null}
+      ) : (
+        <CameraView 
+          style={styles.camera} 
+          ref={cameraRef}
+          facing={facing}
+        >
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={styles.button}
+              onPress={toggleFacing}
+            >
+              <Text style={styles.buttonText}>Flip</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.button}
+              onPress={analyzeImage}
+              disabled={isAnalyzing}
+            >
+              {isAnalyzing ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text style={styles.buttonText}>Analyze</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </CameraView>
+      )}
     </View>
   );
 }
@@ -106,6 +139,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   camera: {
+    flex: 1,
+    width: '100%',
+  },
+  annotatedImage: {
     flex: 1,
     width: '100%',
   },
