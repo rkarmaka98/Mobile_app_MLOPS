@@ -43,12 +43,21 @@ logger.info("Loading YOLOv8 model...")
 model = YOLO('yolov8n.pt')  # Load a pretrained YOLOv8n model
 logger.info("Model loaded successfully")
 
-def preprocess_image(image):
+def preprocess_image(image, orientation=1):
     logger.debug("Preprocessing image...")
     try:
         # Convert base64 to image
         image_data = base64.b64decode(image)
         image = Image.open(io.BytesIO(image_data))
+        
+        # Apply orientation correction if needed
+        if orientation in [3, 6, 8]:
+            if orientation == 3:
+                image = image.rotate(180, expand=True)
+            elif orientation == 6:
+                image = image.rotate(270, expand=True)
+            elif orientation == 8:
+                image = image.rotate(90, expand=True)
         
         # Convert to numpy array
         image = np.array(image)
@@ -92,8 +101,11 @@ def analyze_image():
             logger.error("No image provided in request")
             return jsonify({'error': 'No image provided'}), 400
 
-        # Preprocess the image
-        image = preprocess_image(data['image'])
+        # Get orientation from request, default to 1 (normal)
+        orientation = data.get('orientation', 1)
+        
+        # Preprocess the image with orientation
+        image = preprocess_image(data['image'], orientation)
         
         # Run YOLOv8 inference
         logger.debug("Running YOLOv8 inference...")

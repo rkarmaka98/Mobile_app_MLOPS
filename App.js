@@ -41,12 +41,14 @@ export default function App() {
       const photo = await cameraRef.current.takePictureAsync({
         quality: 0.5,
         base64: true,
+        exif: true,
+        skipProcessing: true,
       });
 
       console.log('Sending image to server...');
-      // Send the image to your server
       const response = await axios.post(`${SERVER_URL}/analyze`, {
         image: photo.base64,
+        orientation: photo.exif?.Orientation || 1,
       });
 
       console.log('Received response:', response.data);
@@ -83,18 +85,21 @@ export default function App() {
             <Image 
               source={{ uri: annotatedImage }} 
               style={styles.annotatedImage}
-              resizeMode="contain"
             />
+            <View style={styles.overlayContainer}>
+              <View style={styles.topOverlay}>
+                <Text style={styles.descriptionText}>{objectDescription}</Text>
+              </View>
+              <View style={styles.bottomOverlay}>
+                <TouchableOpacity
+                  style={styles.backButton}
+                  onPress={() => setAnnotatedImage(null)}
+                >
+                  <Text style={styles.backButtonText}>Back to Camera</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
-          <View style={styles.descriptionWrapper}>
-            <Text style={styles.descriptionText}>{objectDescription}</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => setAnnotatedImage(null)}
-          >
-            <Text style={styles.backButtonText}>Back to Camera</Text>
-          </TouchableOpacity>
         </View>
       ) : (
         <CameraView 
@@ -138,25 +143,38 @@ const styles = StyleSheet.create({
   },
   imageWrapper: {
     flex: 1,
+    width: '100%',
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
   },
   annotatedImage: {
     width: '100%',
     height: '100%',
+    resizeMode: 'contain',
+  },
+  overlayContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'space-between',
+  },
+  topOverlay: {
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    padding: 15,
+    marginTop: 40,
+    marginHorizontal: 20,
     borderRadius: 10,
   },
-  descriptionWrapper: {
-    position: 'absolute',
-    top: 40,
-    left: 20,
-    right: 20,
-    backgroundColor: 'rgba(0,0,0,0.8)',
+  bottomOverlay: {
+    backgroundColor: 'rgba(0,0,0,0.7)',
     padding: 15,
+    marginBottom: 40,
+    marginHorizontal: 20,
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    alignItems: 'center',
   },
   descriptionText: {
     color: 'white',
@@ -166,20 +184,15 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   backButton: {
-    position: 'absolute',
-    bottom: 40,
-    left: 20,
-    right: 20,
-    backgroundColor: 'rgba(0,0,0,0.8)',
-    padding: 15,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    padding: 12,
+    borderRadius: 8,
+    minWidth: 150,
     alignItems: 'center',
   },
   backButtonText: {
     color: 'white',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
   },
   camera: {
