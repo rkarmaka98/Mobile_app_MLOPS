@@ -16,6 +16,8 @@ import paddleocr
 import requests
 from urllib.parse import quote
 from contextlib import nullcontext
+from bs4 import BeautifulSoup
+import re
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -130,11 +132,53 @@ def detect_text(image):
         return []
 
 def get_google_search_url(object_class, text=""):
-    """Generate a Google search URL based on object class and detected text"""
+    """Generate a Google search URL for shopping based on object class and detected text"""
+    # Create a shopping-specific query
     query = f"{object_class}"
     if text:
         query += f" {text}"
-    return f"https://www.google.com/search?q={quote(query)}"
+    
+    # Add shopping-related terms
+    query += " shopping list category products"
+    
+    # Add site-specific search for major shopping platforms
+    site_filters = " site:amazon.com OR site:walmart.com OR site:target.com OR site:bestbuy.com"
+    query += site_filters
+    
+    # URL encode the query
+    encoded_query = quote(query)
+    
+    # Add shopping-specific parameters
+    return f"https://www.google.com/search?q={encoded_query}&tbm=shop"
+
+def get_shopping_results(search_url):
+    """Fetch and parse shopping results from Google"""
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        response = requests.get(search_url, headers=headers)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Find shopping results
+        results = []
+        for item in soup.select('.sh-dgr__content'):
+            title = item.select_one('.tAxDx')
+            price = item.select_one('.a8Pemb')
+            store = item.select_one('.aULzUe')
+            
+            if title and price:
+                result = {
+                    'title': title.text.strip(),
+                    'price': price.text.strip(),
+                    'store': store.text.strip() if store else 'Unknown Store'
+                }
+                results.append(result)
+        
+        return results
+    except Exception as e:
+        logger.error(f"Error fetching shopping results: {str(e)}")
+        return []
 
 @app.route('/analyze', methods=['POST'])
 def analyze_image():
@@ -199,11 +243,23 @@ def analyze_image():
                 # Generate Google search URL
                 search_url = get_google_search_url(class_name, detected_text)
                 
+                # Fetch and display shopping results
+                shopping_results = get_shopping_results(search_url)
+                logger.info("\n=== Shopping Results ===")
+                logger.info(f"Search Query: {class_name} {detected_text}")
+                logger.info("Found Products:")
+                for idx, item in enumerate(shopping_results[:5], 1):
+                    logger.info(f"{idx}. {item['title']}")
+                    logger.info(f"   Price: {item['price']}")
+                    logger.info(f"   Store: {item['store']}")
+                    logger.info("   " + "-"*50)
+                
                 detections.append({
                     'class': class_name,
                     'confidence': confidence,
                     'text': detected_text,
-                    'search_url': search_url
+                    'search_url': search_url,
+                    'shopping_results': shopping_results[:5]  # Include top 5 results in response
                 })
         
         # Get annotated image
