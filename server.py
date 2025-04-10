@@ -161,10 +161,6 @@ def analyze_image():
         inference_time = (time.time() - start_time) * 1000  # Convert to milliseconds
         logger.debug(f"Inference completed in {inference_time:.2f}ms")
         
-        # Get detailed description of detected objects
-        description = get_detailed_description(results)
-        logger.debug(f"Generated description: {description}")
-        
         # Get annotated image
         annotated_image = results[0].plot()
         
@@ -174,7 +170,6 @@ def analyze_image():
         logger.debug("Image processing completed")
         
         return jsonify({
-            'description': description,
             'annotated_image': annotated_image_base64,
             'inference_time_ms': inference_time
         })

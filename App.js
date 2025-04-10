@@ -87,9 +87,6 @@ export default function App() {
               style={styles.annotatedImage}
             />
             <View style={styles.overlayContainer}>
-              <View style={styles.topOverlay}>
-                <Text style={styles.descriptionText}>{objectDescription}</Text>
-              </View>
               <View style={styles.bottomOverlay}>
                 <TouchableOpacity
                   style={styles.backButton}
@@ -159,14 +156,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    justifyContent: 'space-between',
-  },
-  topOverlay: {
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    padding: 15,
-    marginTop: 40,
-    marginHorizontal: 20,
-    borderRadius: 10,
+    justifyContent: 'flex-end',
   },
   bottomOverlay: {
     backgroundColor: 'rgba(0,0,0,0.7)',
@@ -175,13 +165,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     borderRadius: 10,
     alignItems: 'center',
-  },
-  descriptionText: {
-    color: 'white',
-    fontSize: 16,
-    textAlign: 'center',
-    fontWeight: '500',
-    lineHeight: 24,
   },
   backButton: {
     backgroundColor: 'rgba(255,255,255,0.2)',
