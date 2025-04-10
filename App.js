@@ -78,23 +78,23 @@ export default function App() {
     <View style={styles.container}>
       <StatusBar style="auto" />
       {annotatedImage ? (
-        <View style={styles.container}>
-          <Image 
-            source={{ uri: annotatedImage }} 
-            style={styles.annotatedImage}
-            resizeMode="contain"
-          />
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={styles.button}
-              onPress={() => setAnnotatedImage(null)}
-            >
-              <Text style={styles.buttonText}>Back to Camera</Text>
-            </TouchableOpacity>
+        <View style={styles.resultContainer}>
+          <View style={styles.imageWrapper}>
+            <Image 
+              source={{ uri: annotatedImage }} 
+              style={styles.annotatedImage}
+              resizeMode="contain"
+            />
           </View>
-          <View style={styles.descriptionContainer}>
+          <View style={styles.descriptionWrapper}>
             <Text style={styles.descriptionText}>{objectDescription}</Text>
           </View>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => setAnnotatedImage(null)}
+          >
+            <Text style={styles.backButtonText}>Back to Camera</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <CameraView 
@@ -130,52 +130,87 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#000',
+  },
+  resultContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  imageWrapper: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  text: {
-    fontSize: 18,
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  camera: {
-    flex: 1,
-    width: '100%',
+    padding: 20,
   },
   annotatedImage: {
-    flex: 1,
     width: '100%',
-  },
-  buttonContainer: {
-    position: 'absolute',
-    bottom: 44,
-    left: 0,
-    width: '100%',
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingHorizontal: 30,
-  },
-  button: {
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    padding: 15,
+    height: '100%',
     borderRadius: 10,
   },
-  buttonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  descriptionContainer: {
+  descriptionWrapper: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    padding: 20,
+    top: 40,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    padding: 15,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   descriptionText: {
     color: 'white',
     fontSize: 16,
     textAlign: 'center',
+    fontWeight: '500',
+    lineHeight: 24,
+  },
+  backButton: {
+    position: 'absolute',
+    bottom: 40,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    padding: 15,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+    alignItems: 'center',
+  },
+  backButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  camera: {
+    flex: 1,
+    width: '100%',
+  },
+  buttonContainer: {
+    position: 'absolute',
+    bottom: 40,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingHorizontal: 20,
+  },
+  button: {
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    padding: 15,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  text: {
+    fontSize: 18,
+    marginBottom: 20,
+    textAlign: 'center',
+    color: 'white',
   },
 }); 
