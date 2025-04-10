@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator, Image, Alert } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator, Image, Alert, Linking } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import axios from 'axios';
 import { StatusBar } from 'expo-status-bar';
@@ -11,8 +11,8 @@ export default function App() {
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [objectDescription, setObjectDescription] = useState('');
   const [annotatedImage, setAnnotatedImage] = useState(null);
+  const [detections, setDetections] = useState([]);
   const [facing, setFacing] = useState('back');
 
   if (!permission) {
@@ -52,8 +52,8 @@ export default function App() {
       });
 
       console.log('Received response:', response.data);
-      setObjectDescription(response.data.description);
       setAnnotatedImage(`data:image/jpeg;base64,${response.data.annotated_image}`);
+      setDetections(response.data.detections);
     } catch (error) {
       console.error('Error analyzing image:', error);
       Alert.alert(
@@ -66,9 +66,16 @@ export default function App() {
           },
         ]
       );
-      setObjectDescription('Error analyzing image. Please try again.');
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  const handleSearch = async (url) => {
+    try {
+      await Linking.openURL(url);
+    } catch (error) {
+      Alert.alert('Error', 'Could not open the search URL');
     }
   };
 
@@ -87,10 +94,27 @@ export default function App() {
               style={styles.annotatedImage}
             />
             <View style={styles.overlayContainer}>
+              <View style={styles.detectionsContainer}>
+                {detections.map((detection, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.detectionButton}
+                    onPress={() => handleSearch(detection.search_url)}
+                  >
+                    <Text style={styles.detectionText}>
+                      {detection.class} ({detection.confidence.toFixed(2)})
+                      {detection.text ? ` - ${detection.text}` : ''}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
               <View style={styles.bottomOverlay}>
                 <TouchableOpacity
                   style={styles.backButton}
-                  onPress={() => setAnnotatedImage(null)}
+                  onPress={() => {
+                    setAnnotatedImage(null);
+                    setDetections([]);
+                  }}
                 >
                   <Text style={styles.backButtonText}>Back to Camera</Text>
                 </TouchableOpacity>
@@ -156,7 +180,25 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
+  },
+  detectionsContainer: {
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    padding: 15,
+    marginTop: 40,
+    marginHorizontal: 20,
+    borderRadius: 10,
+  },
+  detectionButton: {
+    padding: 10,
+    marginVertical: 5,
+    borderRadius: 5,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  detectionText: {
+    color: 'white',
+    fontSize: 14,
+    textAlign: 'center',
   },
   bottomOverlay: {
     backgroundColor: 'rgba(0,0,0,0.7)',
