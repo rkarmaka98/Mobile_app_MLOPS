@@ -10,10 +10,16 @@ from dotenv import load_dotenv
 from ultralytics import YOLO
 import logging
 import socket
+import torch
+import time
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+# Check CUDA availability
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+logger.info(f"Using device: {device}")
 
 app = Flask(__name__)
 # Configure CORS to allow all origins
@@ -38,9 +44,21 @@ def get_local_ip():
 local_ip = get_local_ip()
 logger.info(f"Server will be accessible at: http://{local_ip}:5000")
 
-# Load YOLOv8 model
+# Load YOLOv8 model with CUDA if available
 logger.info("Loading YOLOv8 model...")
-model = YOLO('yolov8n.pt')  # Load a pretrained YOLOv8n model
+model = YOLO('yolov8n.pt')  # Load model first
+
+# Optimize model for inference
+if device == 'cuda':
+    # First fuse the model in float32
+    model.fuse()
+    # Then move to CUDA and convert to half precision
+    model = model.to(device)
+    model.half()
+    # Enable cuDNN optimizations
+    torch.backends.cudnn.benchmark = True
+    torch.backends.cudnn.enabled = True
+
 logger.info("Model loaded successfully")
 
 def preprocess_image(image, orientation=1):
@@ -59,10 +77,23 @@ def preprocess_image(image, orientation=1):
             elif orientation == 8:
                 image = image.rotate(90, expand=True)
         
-        # Convert to numpy array
-        image = np.array(image)
-        logger.debug(f"Image shape: {image.shape}")
+        # Resize image to YOLOv8's expected size (divisible by 32)
+        target_size = 640
+        ratio = min(target_size / image.width, target_size / image.height)
+        new_size = (int(image.width * ratio), int(image.height * ratio))
+        # Ensure dimensions are divisible by 32
+        new_size = (new_size[0] - (new_size[0] % 32), new_size[1] - (new_size[1] % 32))
+        image = image.resize(new_size, Image.Resampling.LANCZOS)
         
+        # Convert to numpy array and normalize
+        image = np.array(image)
+        image = image.astype(np.float32) / 255.0  # Normalize to [0, 1]
+        
+        # Convert to BCHW format
+        image = image.transpose(2, 0, 1)  # HWC to CHW
+        image = np.expand_dims(image, 0)  # Add batch dimension
+        
+        logger.debug(f"Processed image shape: {image.shape}")
         return image
     except Exception as e:
         logger.error(f"Error in preprocess_image: {str(e)}")
@@ -107,10 +138,28 @@ def analyze_image():
         # Preprocess the image with orientation
         image = preprocess_image(data['image'], orientation)
         
-        # Run YOLOv8 inference
+        # Convert to tensor and move to device
+        image = torch.from_numpy(image)
+        if device == 'cuda':
+            image = image.half().to(device)
+        else:
+            image = image.to(device)
+        
+        # Run YOLOv8 inference with CUDA and optimized settings
         logger.debug("Running YOLOv8 inference...")
-        results = model(image)
-        logger.debug("Inference completed")
+        start_time = time.time()
+        
+        with torch.no_grad():  # Disable gradient calculation for inference
+            results = model(
+                image,
+                conf=0.25,  # Confidence threshold
+                iou=0.45,   # IoU threshold
+                agnostic_nms=True,  # Class-agnostic NMS
+                max_det=100,  # Maximum number of detections
+            )
+        
+        inference_time = (time.time() - start_time) * 1000  # Convert to milliseconds
+        logger.debug(f"Inference completed in {inference_time:.2f}ms")
         
         # Get detailed description of detected objects
         description = get_detailed_description(results)
@@ -126,7 +175,8 @@ def analyze_image():
         
         return jsonify({
             'description': description,
-            'annotated_image': annotated_image_base64
+            'annotated_image': annotated_image_base64,
+            'inference_time_ms': inference_time
         })
         
     except Exception as e:
